@@ -1,0 +1,10 @@
+[custom.all.toy_comp_idris2]
+type = "local"
+path = "."
+ipkg = "toy_comp_idris2.ipkg"
+test = "test/test.ipkg"
+
+[custom.all.toy_comp_idris2-test]
+type = "local"
+path = "test"
+ipkg = "test.ipkg"
