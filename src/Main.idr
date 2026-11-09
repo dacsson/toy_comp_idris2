@@ -5,7 +5,7 @@ import System.Console.GetOpt
 import System.File
 import Text.Bounded
 import Derive.Prelude
-import Memory.Syntax
+import Asm.Syntax
 
 %language ElabReflection
 
@@ -45,11 +45,9 @@ main = do
             case contents of
                 Left err => putStrLn $ "failed to read file: " ++ show err
                 Right contents => do
-                    putStrLn $ "[LOG] file: " ++ contents
-
                     case mode of
-                        Memory => putStrLn $ (case lexAsm contents of
-                            Nothing => "failed to lex"
-                            Just tokens => show tokens)
+                        Memory => putStrLn $ (case parse contents of
+                            Left err => "failed to parse: " ++ err
+                            Right blocks => show blocks)
                         _ => putStrLn $ "not implemented: " ++ show mode
         _ => putStrLn usage
