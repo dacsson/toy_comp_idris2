@@ -41,6 +41,7 @@ Label : Type
 Label = String
 
 data AsmArg = MemLocArg MemLoc
+         | MemNameArg String
          | ImmArg Imm
          | LabelArg Label
 %runElab derive "AsmArg" [Show, Eq]
@@ -200,9 +201,9 @@ AsmParser consumes result = Grammar () AsmToken consumes result
 memloc : AsmParser True AsmArg
 memloc = do
     match TLBracket
-    num <- match TNum
+    loc <- (MemLocArg <$> match TNum) <|> (MemNameArg <$> match TIdentifier)
     match TRBracket
-    pure $ MemLocArg num
+    pure loc
 
 imm : AsmParser True AsmArg
 imm = do
@@ -246,7 +247,10 @@ instr : AsmParser True Op
 instr = do
     op <- opcode
     arguments <- args
-    terminal "Expected opcode" $ \_ => trace ("[instr] " ++ show op ++ " " ++ show arguments) $ MkOp op arguments
+    -- Constructing an instruction must not consume the next token.
+    the (AsmParser False Op) $ case MkOp op arguments of
+        Just instruction => pure instruction
+        Nothing => fail $ "Invalid arguments for " ++ show op
 
 block : AsmParser True Block
 block = do
