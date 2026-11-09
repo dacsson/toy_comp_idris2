@@ -5,7 +5,6 @@ module Asm.Syntax
 
 import Data.List
 import Derive.Prelude
-import Data.List1
 import Text.Lexer
 import Text.Parser
 
@@ -33,30 +32,28 @@ import Text.Parser
 MemLoc : Type
 MemLoc = Int -- TODO: Nat?
 
-Imm : Type
-Imm = Int
+data Memory = MemLocArg MemLoc
+            | MemNameArg String
+%runElab derive "Memory" [Show, Eq]
 
-Label : Type
-Label = String
+data Imm = ImmArg Int
+%runElab derive "Imm" [Show, Eq]
 
-data AsmArg = MemLocArg MemLoc
-         | MemNameArg String
-         | ImmArg Imm
-         | LabelArg Label
-%runElab derive "AsmArg" [Show, Eq]
+data Label = LabelArg String
+%runElab derive "Label" [Show, Eq]
 
-data Op = LI AsmArg AsmArg
-         | MOV AsmArg AsmArg
-         | ADD AsmArg AsmArg AsmArg
-         | SUB AsmArg AsmArg AsmArg
-         | MUL AsmArg AsmArg AsmArg
-         | EQ AsmArg AsmArg AsmArg
-         | LT AsmArg AsmArg AsmArg
-         | LE AsmArg AsmArg AsmArg
-         | JZ AsmArg AsmArg
-         | OUT AsmArg
-         | JMP AsmArg
-         | LABEL AsmArg
+data Op = LI Memory Imm
+         | MOV Memory Memory
+         | ADD Memory Memory Memory
+         | SUB Memory Memory Memory
+         | MUL Memory Memory Memory
+         | EQ Memory Memory Memory
+         | LT Memory Memory Memory
+         | LE Memory Memory Memory
+         | JZ Label Memory
+         | OUT Memory
+         | JMP Label
+         | LABEL Label
 %runElab derive "Op" [Show, Eq]
 
 ||| Named collection of instructions
@@ -123,32 +120,6 @@ export
 Show AsmToken where
     show (Tok kind text) = show "Token: " ++ show kind ++ " " ++ text
 
-||| Construct concrete Op from opcode token and arbitrary args
-MkOp : AsmTokenKind -> List1 AsmArg -> Maybe Op
-MkOp opcode args = do
-    -- Split by argument count of different opcodes
-    -- TODO: verify types of arguments
-    case args of
-        (arg1 ::: [arg2]) => case opcode of
-            TLI => Just (LI arg1 arg2)
-            TMOV => Just (MOV arg1 arg2)
-            TJZ => Just (JZ arg1 arg2)
-            _ => Nothing
-        (arg1 ::: arg2 :: [arg3]) => case opcode of
-            TADD => Just (ADD arg1 arg2 arg3)
-            TSUB => Just (SUB arg1 arg2 arg3)
-            TMUL => Just (MUL arg1 arg2 arg3)
-            TEQ => Just (EQ arg1 arg2 arg3)
-            TLT => Just (LT arg1 arg2 arg3)
-            TLE => Just (LE arg1 arg2 arg3)
-            _ => Nothing
-        (arg1 ::: []) => case opcode of
-            TOUT => Just (OUT arg1)
-            TJMP => Just (JMP arg1)
-            TLABEL => Just (LABEL arg1)
-            _ => Nothing
-        _ => Nothing
-
 keywords : List (String, AsmTokenKind)
 keywords = [
     ("LI", TLI),
@@ -197,56 +168,132 @@ lexAsm str =
 AsmParser : (consumes: Bool) -> (result: Type) -> Type
 AsmParser consumes result = Grammar () AsmToken consumes result
 
-memloc : AsmParser True AsmArg
+memloc : AsmParser True Memory
 memloc = do
     match TLBracket
     loc <- (MemLocArg <$> match TNum) <|> (MemNameArg <$> match TIdentifier)
     match TRBracket
     pure loc
 
-imm : AsmParser True AsmArg
+imm : AsmParser True Imm
 imm = do
     match THashtag
     num <- match TNum
     pure $ ImmArg num
 
 -- Could be ("@", Num)
-label : AsmParser True AsmArg
+label : AsmParser True Label
 label = do
     match TAtSign
     name <- match TNum
     pure $ LabelArg (cast name)
 
-arg : AsmParser True AsmArg
-arg = memloc <|> imm <|> label
+parseLI : AsmParser True Op
+parseLI = do
+    match TLI
+    arg1 <- memloc
+    match TComma
+    arg2 <- imm
+    pure $ LI arg1 arg2
 
-args : AsmParser True (List1 AsmArg)
-args = sepBy1 (match TComma) arg
+parseMOV : AsmParser True Op
+parseMOV = do
+    match TMOV
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    pure $ MOV arg1 arg2
 
-opcode : AsmParser True AsmTokenKind
-opcode = terminal "Expected opcode" $ \t => case Token.kind t of
-    TLI => Just TLI
-    TMOV => Just TMOV
-    TADD => Just TADD
-    TSUB => Just TSUB
-    TMUL => Just TMUL
-    TEQ => Just TEQ
-    TLT => Just TLT
-    TLE => Just TLE
-    TJZ => Just TJZ
-    TOUT => Just TOUT
-    TJMP => Just TJMP
-    TLABEL => Just TLABEL
-    _ => Nothing
+parseADD : AsmParser True Op
+parseADD = do
+    match TADD
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ ADD arg1 arg2 arg3
+
+parseSUB : AsmParser True Op
+parseSUB = do
+    match TSUB
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ SUB arg1 arg2 arg3
+
+parseMUL : AsmParser True Op
+parseMUL = do
+    match TMUL
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ MUL arg1 arg2 arg3
+
+parseEQ : AsmParser True Op
+parseEQ = do
+    match TEQ
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ EQ arg1 arg2 arg3
+
+parseLT : AsmParser True Op
+parseLT = do
+    match TLT
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ LT arg1 arg2 arg3
+
+parseLE : AsmParser True Op
+parseLE = do
+    match TLE
+    arg1 <- memloc
+    match TComma
+    arg2 <- memloc
+    match TComma
+    arg3 <- memloc
+    pure $ LE arg1 arg2 arg3
+
+parseJZ : AsmParser True Op
+parseJZ = do
+    match TJZ
+    arg1 <- label
+    match TComma
+    arg2 <- memloc
+    pure $ JZ arg1 arg2
+
+parseOUT : AsmParser True Op
+parseOUT = do
+    match TOUT
+    arg1 <- memloc
+    pure $ OUT arg1
+
+parseJMP : AsmParser True Op
+parseJMP = do
+    match TJMP
+    arg1 <- label
+    pure $ JMP arg1
+
+parseLABEL : AsmParser True Op
+parseLABEL = do
+    match TLABEL
+    arg1 <- label
+    pure $ LABEL arg1
 
 instr : AsmParser True Op
-instr = do
-    op <- opcode
-    arguments <- args
-    -- Constructing an instruction must not consume the next token.
-    the (AsmParser False Op) $ case MkOp op arguments of
-        Just instruction => pure instruction
-        Nothing => fail $ "Invalid arguments for " ++ show op
+instr = parseLI <|> parseMOV <|> parseADD <|> parseSUB <|> parseMUL
+    <|> parseEQ <|> parseLT <|> parseLE <|> parseJZ <|> parseOUT
+    <|> parseJMP <|> parseLABEL
 
 block : AsmParser True Block
 block = do
@@ -254,14 +301,14 @@ block = do
     name <- match TNum -- (match TIdentifier <|> (cast <$> match TNum))
     match TColon
     instrs <- many instr
-    pure $ MkBlock (cast name) instrs
+    pure $ MkBlock (LabelArg (cast name)) instrs
 
 program : AsmParser False (List Block)
 program = do
     -- first block doesnt have a label, so parse it manually
     intrs <- many instr
     blocks <- many block
-    pure (MkBlock "start_" intrs :: blocks)
+    pure (MkBlock (LabelArg "start_") intrs :: blocks)
 
 parseAsm : List (WithBounds AsmToken) -> Either String (List Block)
 parseAsm toks = case parse program $ filter (not . ignored) toks of
