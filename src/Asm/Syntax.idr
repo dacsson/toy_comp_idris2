@@ -43,18 +43,18 @@ data Label = LabelArg String
 %runElab derive "Label" [Show, Eq]
 
 export
-data Op = LI AsmArg AsmArg
-         | MOV AsmArg AsmArg
-         | ADD AsmArg AsmArg AsmArg
-         | SUB AsmArg AsmArg AsmArg
-         | MUL AsmArg AsmArg AsmArg
-         | EQ AsmArg AsmArg AsmArg
-         | LT AsmArg AsmArg AsmArg
-         | LE AsmArg AsmArg AsmArg
-         | JZ AsmArg AsmArg
-         | OUT AsmArg
-         | JMP AsmArg
-         | LABEL AsmArg
+data Op = LI Memory Imm
+         | MOV Memory Memory
+         | ADD Memory Memory Memory
+         | SUB Memory Memory Memory
+         | MUL Memory Memory Memory
+         | EQ Memory Memory Memory
+         | LT Memory Memory Memory
+         | LE Memory Memory Memory
+         | JZ Label Memory
+         | OUT Memory
+         | JMP Label
+         | LABEL Label
 %runElab derive "Op" [Show, Eq]
 
 ||| Named collection of instructions

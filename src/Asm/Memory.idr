@@ -49,5 +49,5 @@ nameToMem name = do
         Just addr => pure addr
         Nothing => lift $ throwE "Unknown memory location"
 
-stepMem : Cpu ()
-stepMem
+stepMem : Op -> Cpu ()
+stepMem (LI dest val) = writeMem dest val
