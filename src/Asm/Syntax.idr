@@ -8,7 +8,6 @@ import Derive.Prelude
 import Data.List1
 import Text.Lexer
 import Text.Parser
-import Debug.Trace
 
 %default total
 %language ElabReflection
@@ -129,7 +128,7 @@ MkOp : AsmTokenKind -> List1 AsmArg -> Maybe Op
 MkOp opcode args = do
     -- Split by argument count of different opcodes
     -- TODO: verify types of arguments
-    trace ("[MkOp] " ++ show opcode ++ " " ++ show args) $ case args of
+    case args of
         (arg1 ::: [arg2]) => case opcode of
             TLI => Just (LI arg1 arg2)
             TMOV => Just (MOV arg1 arg2)
@@ -215,20 +214,17 @@ imm = do
 label : AsmParser True AsmArg
 label = do
     match TAtSign
-    name <- match TNum -- (match TIdentifier <|> (cast <$> match TNum))
+    name <- match TNum
     pure $ LabelArg (cast name)
 
 arg : AsmParser True AsmArg
 arg = memloc <|> imm <|> label
 
 args : AsmParser True (List1 AsmArg)
-args = traceVal <$> sepBy1 (match TComma) arg
-    -- first <- arg
-    -- rest <- many arg
-    -- pure (first :: rest)
+args = sepBy1 (match TComma) arg
 
 opcode : AsmParser True AsmTokenKind
-opcode = terminal "Expected opcode" $ \t => traceVal <$> (case Token.kind t of
+opcode = terminal "Expected opcode" $ \t => case Token.kind t of
     TLI => Just TLI
     TMOV => Just TMOV
     TADD => Just TADD
@@ -241,7 +237,7 @@ opcode = terminal "Expected opcode" $ \t => traceVal <$> (case Token.kind t of
     TOUT => Just TOUT
     TJMP => Just TJMP
     TLABEL => Just TLABEL
-    _ => Nothing)
+    _ => Nothing
 
 instr : AsmParser True Op
 instr = do
@@ -254,16 +250,16 @@ instr = do
 
 block : AsmParser True Block
 block = do
-    trace "[block] parse TAtSign" $ match TAtSign
-    name <- traceVal <$> match TNum -- (match TIdentifier <|> (cast <$> match TNum))
-    trace "[block] parse TColon" $ match TColon
+    match TAtSign
+    name <- match TNum -- (match TIdentifier <|> (cast <$> match TNum))
+    match TColon
     instrs <- many instr
     pure $ MkBlock (cast name) instrs
 
 program : AsmParser False (List Block)
 program = do
     -- first block doesnt have a label, so parse it manually
-    intrs <- traceVal <$> many instr
+    intrs <- many instr
     blocks <- many block
     pure (MkBlock "start_" intrs :: blocks)
 
