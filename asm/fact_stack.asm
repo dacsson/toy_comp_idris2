@@ -18,4 +18,4 @@
     JMP @4
 @18:
     LD [r]
-    OUT 
+    OUTN

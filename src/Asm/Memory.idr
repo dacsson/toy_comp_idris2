@@ -14,7 +14,7 @@ import Data.List
 %language ElabReflection
 
 CpuMemory : Type
-CpuMemory = SortedMap Nat Bits8
+CpuMemory = SortedMap Nat Int
 
 ||| A state of mem2mem CPU
 record CpuState where
@@ -38,7 +38,7 @@ nameToMem name = do
         Just addr => pure addr
         Nothing => lift $ throwE ("Unknown memory location: " ++ name)
 
-readMem : Memory -> Cpu Bits8
+readMem : Memory -> Cpu Int
 readMem (MemLocArg addr) = do
     state <- gets mem
     case SortedMap.lookup addr state of
@@ -53,7 +53,7 @@ readMem (MemNameArg name) = do
         Just val => pure val
         Nothing => lift $ throwE "Memory address out of bounds"
 
-writeMem : Memory -> Bits8 -> Cpu ()
+writeMem : Memory -> Int -> Cpu ()
 writeMem (MemLocArg addr) val = do
     -- Note: `$=` applies a function to the state field
     -- this is so cool, better then usual record update
@@ -107,6 +107,9 @@ stepMem (JZ (LabelArg label) src) = do
         else pure ()
 stepMem (OUT src) = do
     val <- readMem src
+    lift $ putStr (singleton (chr val))
+stepMem (OUTN src) = do
+    val <- readMem src
     lift $ putStrLn (show val)
 stepMem (LABEL (LabelArg label)) = pure ()
 stepMem (JMP (LabelArg label)) = jumpTo (LabelArg label)
@@ -151,6 +154,7 @@ getMemoryArgs (LT arg1 arg2 arg3) = [arg1, arg2, arg3]
 getMemoryArgs (LE arg1 arg2 arg3) = [arg1, arg2, arg3]
 getMemoryArgs (JZ _ arg) = [arg]
 getMemoryArgs (OUT arg) = [arg]
+getMemoryArgs (OUTN arg) = [arg]
 getMemoryArgs _ = []
 
 ||| Allocate distinct addresses for names after all numeric addresses.

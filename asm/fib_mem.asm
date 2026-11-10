@@ -18,4 +18,4 @@
     MOV [i], [9]
     JMP @8
 @19:
-    OUT [a]
+    OUTN [a]

@@ -13,4 +13,4 @@
     MOV [n], [7]
     JMP @4
 @14:
-    OUT [r]
+    OUTN [r]

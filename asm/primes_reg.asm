@@ -46,7 +46,7 @@
     EQ r0, r0, r1
     JZ @50, r0
     LD r0, [n]
-    OUT r0
+    OUTN r0
     JMP @51
 @50:
 @51:

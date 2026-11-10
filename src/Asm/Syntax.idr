@@ -25,6 +25,7 @@ import Text.Parser
 -- │ LE    │ Mem   │ Mem  │ Mem  │
 -- │ JZ    │ Label │ Mem  │ -    │
 -- │ OUT   │ -     │ Mem  │ -    │
+-- │ OUTN  │ -     │ Mem  │ -    │
 -- │ JMP   │ Label │ -    │ -    │
 -- │ LABEL │ Label │ -    │ -    │
 -- └───────┴───────┴──────┴──────┘
@@ -57,6 +58,7 @@ data Op = LI Memory Imm
          | LE Memory Memory Memory
          | JZ Label Memory
          | OUT Memory
+         | OUTN Memory
          | JMP Label
          | LABEL Label
 %runElab derive "Op" [Show, Eq]
@@ -87,6 +89,7 @@ data AsmTokenKind = TAtSign -- @
                | TLE
                | TJZ
                | TOUT
+               | TOUTN
                | TJMP
                | TLABEL
                | TIgnore -- whitespace etc.
@@ -115,6 +118,7 @@ TokenKind AsmTokenKind where
     tokValue TLE _ = ()
     tokValue TJZ _ = ()
     tokValue TOUT _ = ()
+    tokValue TOUTN _ = ()
     tokValue TJMP _ = ()
     tokValue TLABEL _ = ()
     tokValue TIgnore _ = ()
@@ -138,6 +142,7 @@ keywords = [
     ("LE", TLE),
     ("JZ", TJZ),
     ("OUT", TOUT),
+    ("OUTN", TOUTN),
     ("JMP", TJMP),
     ("LABEL", TLABEL)
 ]
@@ -284,6 +289,12 @@ parseOUT = do
     arg1 <- memloc
     pure $ OUT arg1
 
+parseOUTN : AsmParser True Op
+parseOUTN = do
+    match TOUTN
+    arg1 <- memloc
+    pure $ OUTN arg1
+
 parseJMP : AsmParser True Op
 parseJMP = do
     match TJMP
@@ -298,7 +309,7 @@ parseLABEL = do
 
 instr : AsmParser True Op
 instr = parseLI <|> parseMOV <|> parseADD <|> parseSUB <|> parseMUL
-    <|> parseEQ <|> parseLT <|> parseLE <|> parseJZ <|> parseOUT
+    <|> parseEQ <|> parseLT <|> parseLE <|> parseJZ <|> parseOUT <|> parseOUTN
     <|> parseJMP <|> parseLABEL
 
 block : AsmParser True Block
