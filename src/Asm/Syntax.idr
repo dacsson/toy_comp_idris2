@@ -29,20 +29,24 @@ import Text.Parser
 -- │ LABEL │ Label │ -    │ -    │
 -- └───────┴───────┴──────┴──────┘
 
+public export
 MemLoc : Type
-MemLoc = Int -- TODO: Nat?
+MemLoc = Nat -- TODO: Nat?
 
+public export
 data Memory = MemLocArg MemLoc
             | MemNameArg String
 %runElab derive "Memory" [Show, Eq]
 
+public export
 data Imm = ImmArg Int
 %runElab derive "Imm" [Show, Eq]
 
+public export
 data Label = LabelArg String
-%runElab derive "Label" [Show, Eq]
+%runElab derive "Label" [Show, Eq, Ord]
 
-export
+public export
 data Op = LI Memory Imm
          | MOV Memory Memory
          | ADD Memory Memory Memory
@@ -58,7 +62,7 @@ data Op = LI Memory Imm
 %runElab derive "Op" [Show, Eq]
 
 ||| Named collection of instructions
-export
+public export
 record Block where
     constructor MkBlock
     name : Label
@@ -173,7 +177,7 @@ AsmParser consumes result = Grammar () AsmToken consumes result
 memloc : AsmParser True Memory
 memloc = do
     match TLBracket
-    loc <- (MemLocArg <$> match TNum) <|> (MemNameArg <$> match TIdentifier)
+    loc <- (MemLocArg <$> (cast <$> match TNum)) <|> (MemNameArg <$> match TIdentifier)
     match TRBracket
     pure loc
 

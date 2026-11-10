@@ -6,6 +6,7 @@ import System.File
 import Text.Bounded
 import Derive.Prelude
 import Asm.Syntax
+import Asm.Memory
 
 %language ElabReflection
 
@@ -46,8 +47,12 @@ main = do
                 Left err => putStrLn $ "failed to read file: " ++ show err
                 Right contents => do
                     case mode of
-                        Memory => putStrLn $ (case parse contents of
-                            Left err => "failed to parse: " ++ err
-                            Right blocks => show blocks)
+                        Memory => case parse contents of
+                            Left err => putStrLn $ "failed to parse: " ++ err
+                            Right blocks => do
+                                res <- Memory.runCpu blocks
+                                case res of
+                                    Left err => (ignore $ fPutStrLn stderr ("Error: " ++ err)) >> exitFailure
+                                    Right _ => pure ()
                         _ => putStrLn $ "not implemented: " ++ show mode
         _ => putStrLn usage
