@@ -2,13 +2,20 @@
 
 Реализация [toy_comp](https://github.com/true-grue/toy_comp) на idris2
 
-Build with `pack build`, then run execution tests with `python3 test/test_memory.py`.
 Интерпретаторы для ISA:
 - Память-память
 - Стэковая
 - Регистровая
 
 И компиляторы для них
+
+## Юзадж
+
+```
+pack build
+# or for example
+pack run toy_comp_idris2.ipkg  -m memory -i asm/fib_mem.asm
+```  
 
 ## Отличия
 
