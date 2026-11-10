@@ -26,4 +26,4 @@
     JMP @8
 @26:
     LD [a]
-    OUT 
+    OUTN

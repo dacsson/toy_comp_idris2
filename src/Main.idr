@@ -5,7 +5,8 @@ import System.Console.GetOpt
 import System.File
 import Text.Bounded
 import Derive.Prelude
-import Memory.Syntax
+import Asm.Syntax
+import Asm.Memory
 
 %language ElabReflection
 
@@ -45,11 +46,13 @@ main = do
             case contents of
                 Left err => putStrLn $ "failed to read file: " ++ show err
                 Right contents => do
-                    putStrLn $ "[LOG] file: " ++ contents
-
                     case mode of
-                        Memory => putStrLn $ (case lexAsm contents of
-                            Nothing => "failed to lex"
-                            Just tokens => show tokens)
+                        Memory => case parse contents of
+                            Left err => putStrLn $ "failed to parse: " ++ err
+                            Right blocks => do
+                                res <- Memory.runCpu blocks
+                                case res of
+                                    Left err => (ignore $ fPutStrLn stderr ("Error: " ++ err)) >> exitFailure
+                                    Right _ => pure ()
                         _ => putStrLn $ "not implemented: " ++ show mode
         _ => putStrLn usage

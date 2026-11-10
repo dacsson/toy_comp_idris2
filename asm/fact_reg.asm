@@ -18,4 +18,4 @@
     JMP @4
 @18:
     LD r0, [r]
-    OUT r0
+    OUTN r0
